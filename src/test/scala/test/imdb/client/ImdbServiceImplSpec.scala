@@ -1,0 +1,85 @@
+package test.imdb.client
+
+import com.twitter.finagle.Service
+import com.twitter.finagle.http.{Request, Response, Status}
+import com.twitter.util.{Await, Future => TwitterFuture}
+import io.circe.generic.auto._
+import io.circe.syntax._
+import org.scalatest.funsuite.AnyFunSuiteLike
+import test.imdb.client.response.SearchTitleResponse
+import test.imdb.client.response.SearchTitleResponse.ImdbTitle
+import test.imdb.config.ImdbConfig
+
+class ImdbServiceImplSpec extends AnyFunSuiteLike {
+
+  test("should parse a valid JSON response correctly") {
+    val imdbConfig = ImdbConfig(host = "testhost.com", endpoint = "/test-endpoint")
+
+    val dummyResponse = SearchTitleResponse(
+      titles = List(
+        ImdbTitle(
+          id = "tt1234567",
+          `type` = "movie",
+          primaryTitle = "Test Title",
+          originalTitle = "Test Title",
+          primaryImage = Some(SearchTitleResponse.ImdbImage("http://image.url", 100, 200)),
+          startYear = Some(2020),
+          endYear = Some(2021),
+          runtimeSeconds = Some(7200),
+          genres = Some(List("Drama")),
+          rating = Some(SearchTitleResponse.ImdbRating(8.5, 10000)),
+          metacritic = Some(SearchTitleResponse.ImdbMetacritic("https://metacritic.com", 80, 120)),
+          plot = Some("A movie plot."),
+          originCountries = Some(List(SearchTitleResponse.ImdbCountry("US", "United States"))),
+          spokenLanguages = Some(List(SearchTitleResponse.ImdbLanguage("en", "English")))
+        )
+      )
+    )
+
+    val mockHttpService: Service[Request, Response] = (request: Request) => {
+      val response = Response(Status.Ok)
+      response.setContentString(dummyResponse.asJson.noSpaces)
+      TwitterFuture.value(response)
+    }
+
+    val service = new ImdbServiceImpl(mockHttpService, imdbConfig)
+    val result = Await.result(service.getMoviesByTitle("some-title"))
+
+    assert(result.isDefined)
+    assert(result.get.titles.head.primaryTitle == "Test Title")
+  }
+
+  test("should return None when JSON is invalid") {
+    val imdbConfig = ImdbConfig(host = "testhost.com", endpoint = "/test-endpoint")
+
+    val mockHttpService: Service[Request, Response] = (request: Request) => {
+      val response = Response(Status.Ok)
+      response.setContentString("not a valid json")
+      TwitterFuture.value(response)
+    }
+
+    val service = new ImdbServiceImpl(mockHttpService, imdbConfig)
+    val result = Await.result(service.getMoviesByTitle("invalid-json"))
+
+    assert(result.isEmpty)
+  }
+
+  test("should build the correct request path and host") {
+    var capturedRequest: Option[Request] = None
+    val imdbConfig = ImdbConfig(host = "expected.host", endpoint = "/expected-endpoint")
+
+    val mockHttpService: Service[Request, Response] = (request: Request) => {
+      capturedRequest = Some(request)
+      val response = Response(Status.Ok)
+      response.setContentString("""{"titles": []}""")
+      TwitterFuture.value(response)
+    }
+
+    val service = new ImdbServiceImpl(mockHttpService, imdbConfig)
+    Await.result(service.getMoviesByTitle("testing"))
+
+    assert(capturedRequest.isDefined)
+    assert(capturedRequest.get.uri == "/expected-endpoint/search/titles?query=testing")
+    assert(capturedRequest.get.host.contains("expected.host"))
+  }
+}
