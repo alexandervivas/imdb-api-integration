@@ -1,4 +1,4 @@
-package test.imdb.api
+package test.imdb.controller
 
 import com.google.inject.{Inject, Singleton}
 import com.twitter.finagle.Service
@@ -9,9 +9,14 @@ import io.circe.syntax._
 import test.imdb.service.MoviesService
 
 @Singleton
-class MoviesRoute @Inject()(movieService: MoviesService) extends Service[Request, Response] {
+class MoviesController @Inject()(movieService: MoviesService) extends Service[Request, Response] {
 
-  override def apply(req: Request): Future[Response] = {
+  override def apply(req: Request): Future[Response] = req.path match {
+    case "/movies" => handleMovieRequest(req)
+    case _ => notFound(req.path)
+  }
+
+  private def handleMovieRequest(req: Request): Future[Response] = {
     val title = req.params.get("titleName")
     val threshold = req.params.get("parentalRatingThreshold").flatMap(t => scala.util.Try(t.toInt).toOption)
 
@@ -32,8 +37,14 @@ class MoviesRoute @Inject()(movieService: MoviesService) extends Service[Request
 
       case None =>
         val response = Response(Status.BadRequest)
-        response.contentString = "Missing titleName parameter"
+        response.contentString = "Missing required query param: titleName"
         Future.value(response)
     }
+  }
+
+  private def notFound(path: String): Future[Response] = {
+    val response = Response(Status.NotFound)
+    response.contentString = s"No handler for path: $path"
+    Future.value(response)
   }
 }
