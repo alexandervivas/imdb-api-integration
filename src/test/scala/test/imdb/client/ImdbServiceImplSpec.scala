@@ -139,4 +139,60 @@ class ImdbServiceImplSpec extends AnyFunSuiteLike {
     assert(result.exists(_.titles.exists(_.id == "tt30826447")))
     assert(result.flatMap(_.titles.find(_.id == "tt30826447").flatMap(_.rating.map(_.aggregateRating))).contains(7.2))
   }
+
+  test("should log and return None when response is error with valid RpcStatus payload") {
+    val imdbConfig = ImdbConfig(host = "api.imdbapi.dev", endpoint = "/search")
+
+    val errorJson =
+      """{
+        |  "code": 7,
+        |  "message": "Permission denied",
+        |  "details": []
+        |}""".stripMargin
+
+    val mockHttpService: Service[Request, Response] = (_: Request) => {
+      val response = Response(Status.Forbidden)
+      response.setContentString(errorJson)
+      TwitterFuture.value(response)
+    }
+
+    val service = new ImdbServiceImpl(mockHttpService, imdbConfig)
+    val result = Await.result(service.getMoviesByTitle("forbidden-query"))
+
+    assert(result.isEmpty)
+  }
+
+  test("should log and return None when response is error with invalid RpcStatus payload") {
+    val imdbConfig = ImdbConfig(host = "api.imdbapi.dev", endpoint = "/search")
+
+    val invalidErrorJson = """{"unexpected": "format"}"""
+
+    val mockHttpService: Service[Request, Response] = (_: Request) => {
+      val response = Response(Status.BadRequest)
+      response.setContentString(invalidErrorJson)
+      TwitterFuture.value(response)
+    }
+
+    val service = new ImdbServiceImpl(mockHttpService, imdbConfig)
+    val result = Await.result(service.getMoviesByTitle("bad-query"))
+
+    assert(result.isEmpty)
+  }
+
+  test("should return None when status is OK but SearchTitleResponse is invalid") {
+    val imdbConfig = ImdbConfig(host = "api.imdbapi.dev", endpoint = "/search")
+
+    val invalidJson = """{"not": "a valid SearchTitleResponse"}"""
+
+    val mockHttpService: Service[Request, Response] = (_: Request) => {
+      val response = Response(Status.Ok)
+      response.setContentString(invalidJson)
+      TwitterFuture.value(response)
+    }
+
+    val service = new ImdbServiceImpl(mockHttpService, imdbConfig)
+    val result = Await.result(service.getMoviesByTitle("invalid-content"))
+
+    assert(result.isEmpty)
+  }
 }
