@@ -16,8 +16,8 @@ class AppModule extends AbstractModule {
 
   @Provides
   @Singleton
-  def provideImdbHttpService(): Service[Request, Response] = {
-    Http.client.newService("imdbapi.dev:443")
+  def provideImdbHttpService(imdbConfig: ImdbConfig): Service[Request, Response] = {
+    Http.client.withTls(imdbConfig.host).newService(s"${imdbConfig.host}:443")
   }
 
   @Provides

@@ -1,9 +1,9 @@
 package test.imdb.client.response
 
-case class SearchTitleResponse(titles: Seq[SearchTitleResponse.ImdbTitle])
+final case class SearchTitleResponse(titles: Seq[SearchTitleResponse.ImdbTitle])
 
 object SearchTitleResponse {
-  case class ImdbTitle(
+  final case class ImdbTitle(
                         id: String,
                         `type`: String,
                         primaryTitle: String,
@@ -20,29 +20,29 @@ object SearchTitleResponse {
                         spokenLanguages: Option[List[ImdbLanguage]]
                       )
 
-  case class ImdbImage(
+  final case class ImdbImage(
                         url: String,
                         width: Int,
                         height: Int
                       )
 
-  case class ImdbRating(
+  final case class ImdbRating(
                          aggregateRating: Double,
                          voteCount: Int
                        )
 
-  case class ImdbMetacritic(
+  final case class ImdbMetacritic(
                              url: String,
                              score: Int,
                              reviewCount: Int
                            )
 
-  case class ImdbCountry(
+  final case class ImdbCountry(
                           code: String,
                           name: String
                         )
 
-  case class ImdbLanguage(
+  final case class ImdbLanguage(
                            code: String,
                            name: String
                          )

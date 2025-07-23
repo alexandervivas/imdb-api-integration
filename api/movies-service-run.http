@@ -1,0 +1,3 @@
+GET {{api_host}}/movies?titleName=the four
+Content-Type: application/json
+
