@@ -1,7 +1,7 @@
 package test.imdb.model
 
 case class Movie(
-                  `type`: String,
+                  `type`: MovieType,
                   primaryTitle: String,
                   originalTitle: String,
                   genres: List[String],

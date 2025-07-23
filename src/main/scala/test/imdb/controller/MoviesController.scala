@@ -21,17 +21,17 @@ class MoviesController @Inject()(movieService: MoviesService) extends Service[Re
     val threshold = req.params.get("parentalRatingThreshold").flatMap(t => scala.util.Try(t.toInt).toOption)
 
     title match {
-      case Some(t) =>
-        movieService.getMoviesByTitle(t, threshold).map {
-          case Some(movie) =>
-            val response = Response()
-            response.contentString = movie.asJson.noSpaces
-            response.contentType = "application/json"
-            response.status = Status.Ok
-            response
-          case None =>
+      case Some(titleName) =>
+        movieService.getMoviesByTitle(titleName, threshold).map {
+          case Nil =>
             val response = Response(Status.NotFound)
             response.contentString = "Movie not found or filtered out"
+            response
+          case movies =>
+            val response = Response()
+            response.contentString = movies.asJson.noSpaces
+            response.contentType = "application/json"
+            response.status = Status.Ok
             response
         }
 
